@@ -122,6 +122,18 @@ def test_thumbnail_and_preview(client, env) -> None:
     assert p.status_code == 200 and p.content[:2] == b"\xff\xd8"
 
 
+def test_missing_rendition_files_are_regenerated(client, env) -> None:
+    pid = _seed(env, 1)[0]
+    for f in env["data"].rglob(f"{pid}*"):
+        f.unlink()
+    r = client.get(f"/api/v1/photos/{pid}/thumbnail", params={"size": 256})
+    assert r.status_code == 404 and "regenerating" in r.json()["detail"]
+    assert client.get(f"/api/v1/photos/{pid}/preview").status_code == 404  # deduped with the queued render
+    run_jobs()
+    assert client.get(f"/api/v1/photos/{pid}/thumbnail", params={"size": 256}).status_code == 200
+    assert client.get(f"/api/v1/photos/{pid}/preview").status_code == 200
+
+
 def test_stats_system_events_jobs(client, env) -> None:
     _seed(env, 2)
     s = client.get("/api/v1/stats").json()

@@ -175,3 +175,33 @@ def test_pipeline_stores_ollama_critique(ollama_env, db, monkeypatch):
     assert critique.suggestions == ["raise shutter speed to 1/125"]
     assert db.scalars(select(Photo)).one().scene == "portrait"
     assert len(fake.calls) == 1
+
+
+@requires_exiftool
+def test_critique_regenerates_preview_missing_from_disk(ollama_env, db, monkeypatch):
+    from sqlalchemy import select
+
+    from app.ai import remote
+    from app.models import Photo
+    from app.services.pipeline import ai_step, process_file_inline
+
+    fake = FakeOllama({"content": json.dumps(CRITIQUE)})
+    monkeypatch.setattr(remote.httpx, "post", fake)
+    files = write_capture(ollama_env["photos"], "DSC_0101", datetime(2026, 5, 1, 11, 0, 0), raw=False)
+    age_files(ollama_env["photos"])
+    process_file_inline(files["jpeg"])
+    pid = str(db.scalars(select(Photo.id)).one())
+    previews = list((ollama_env["data"] / "previews").rglob(f"{pid}.jpg"))
+    assert len(previews) == 1
+
+    previews[0].unlink()
+    assert ai_step(pid).status == "succeeded"
+    assert previews[0].exists()
+    assert files["jpeg"].exists()
+
+    # Without the original there is nothing to render from: report it instead of failing the job.
+    previews[0].unlink()
+    files["jpeg"].unlink()
+    res = ai_step(pid)
+    assert res.status == "no_preview" and "DSC_0101" in res.details["error"]
+    assert len(fake.calls) == 2

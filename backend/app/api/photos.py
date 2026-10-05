@@ -28,7 +28,7 @@ from app.services.immich import ImmichClient, ImmichError
 from app.services.photos import PhotoFilters, SortKey, get_photo, list_photos, set_tags, to_detail, to_summary
 from app.services.search import refresh_search_text
 from app.utils.paths import UnsafePathError, resolve_under_roots
-from app.workers.queue import enqueue
+from app.workers.queue import enqueue, enqueue_safe
 
 router = APIRouter(prefix="/photos", tags=["photos"])
 files_router = APIRouter(prefix="/files", tags=["files"])
@@ -197,14 +197,17 @@ def link_immich(db: DB, photo_id: uuid.UUID) -> PhotoDetail:
     return to_detail(db, _photo_or_404(db, photo_id))
 
 
-def _serve_rendition(path_rel: str, media_type: str) -> FileResponse:
+def _serve_rendition(photo_id: uuid.UUID, path_rel: str, media_type: str) -> FileResponse:
     settings = get_settings()
     try:
         path = resolve_under_roots(settings.data_root / path_rel, [settings.data_root])
     except UnsafePathError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "not found") from exc
     if not path.is_file():
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "rendition missing")
+        # Recorded but gone (e.g. /data reset): regenerate from the original in the background.
+        pid = str(photo_id)
+        enqueue_safe(JobKind.RENDER, dedupe_key=pid, photo_id=pid, payload={"photo_id": pid})
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "rendition missing, regenerating")
     return FileResponse(path, media_type=media_type, headers=IMMUTABLE)
 
 
@@ -214,7 +217,7 @@ def thumbnail(db: DB, photo_id: uuid.UUID, size: Annotated[int, Query(ge=64, le=
     r = best_thumbnail(photo, size) if photo else None
     if r is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "thumbnail not generated yet")
-    return _serve_rendition(r.path, "image/webp" if r.format == "webp" else "image/jpeg")
+    return _serve_rendition(photo_id, r.path, "image/webp" if r.format == "webp" else "image/jpeg")
 
 
 @router.get("/{photo_id}/preview", response_class=FileResponse)
@@ -223,7 +226,7 @@ def preview(db: DB, photo_id: uuid.UUID) -> FileResponse:
     r = rendition_for(photo, RenditionKind.PREVIEW.value) if photo else None
     if r is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "preview not generated yet")
-    return _serve_rendition(r.path, "image/jpeg")
+    return _serve_rendition(photo_id, r.path, "image/jpeg")
 
 
 @files_router.get("/{file_id}/download", response_class=FileResponse)

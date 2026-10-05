@@ -24,6 +24,7 @@ from app.models.enums import ProcessingStatus
 from app.observability import metrics
 from app.services.analysis import (
     AnalysisUnavailableError,
+    preview_path,
     run_ai_critique,
     run_technical_analysis,
 )
@@ -93,9 +94,36 @@ def render_step(photo_id: uuid.UUID | str, force: bool = False) -> StepResult:
         )
 
 
+def _ensure_preview(photo_id: uuid.UUID | str) -> str | None:
+    """Re-render a preview that is recorded but gone from disk (e.g. /data was reset or moved
+    while the database kept its rows). Returns why it is still unavailable, or None."""
+    with session_scope() as s:
+        photo = _load(s, photo_id)
+        if photo is None:
+            return "photo not found"
+        try:
+            preview_path(photo)
+            return None
+        except AnalysisUnavailableError:
+            pass
+    render = render_step(photo_id)
+    if render.status == "render_failed":
+        return render.details.get("error", "render failed")
+    with session_scope() as s:
+        photo = _load(s, photo_id)
+        try:
+            preview_path(photo)
+        except AnalysisUnavailableError as exc:
+            return str(exc)
+    log.info("preview_regenerated", category="THUMBNAIL", photo_id=str(photo_id))
+    return None
+
+
 def analyze_step(photo_id: uuid.UUID | str, with_ai: bool | None = None) -> StepResult:
     """Technical analysis; runs the local critique inline when configured."""
     settings = get_settings()
+    if err := _ensure_preview(photo_id):
+        return StepResult(str(photo_id), "no_preview", {"error": err})
     with session_scope() as s:
         photo = _load(s, photo_id)
         if photo is None:
@@ -114,6 +142,9 @@ def analyze_step(photo_id: uuid.UUID | str, with_ai: bool | None = None) -> Step
 
 
 def ai_step(photo_id: uuid.UUID | str, provider: str | None = None) -> StepResult:
+    if err := _ensure_preview(photo_id):
+        log.warning("ai_skipped_no_preview", category="AI", photo_id=str(photo_id), error=err)
+        return StepResult(str(photo_id), "no_preview", {"error": err})
     with session_scope() as s:
         photo = _load(s, photo_id)
         if photo is None:
