@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -120,13 +121,33 @@ CRITIQUE_SCHEMA: dict[str, Any] = {
             "type": "string",
             "description": "short scene category, e.g. portrait, landscape, street, wildlife, macro, night, sports, architecture, event, product",
         },
-        "subject": {"type": "string"},
+        "subject": {"type": "string", "description": "the main subject in a few words"},
         "description": {"type": "string", "description": "1-2 sentence description of the image"},
-        "composition": {"type": "array", "items": {"type": "string"}},
-        "technical": {"type": "array", "items": {"type": "string"}},
-        "issues": {"type": "array", "items": {"type": "string"}},
-        "suggestions": {"type": "array", "items": {"type": "string"}},
-        "tags": {"type": "array", "items": {"type": "string"}},
+        "composition": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "2-4 short observations about framing, balance, background and light",
+        },
+        "technical": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "2-4 short observations about exposure, focus, motion blur and noise",
+        },
+        "issues": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "concrete problems, empty if none",
+        },
+        "suggestions": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "2-4 actionable tips for the next shot",
+        },
+        "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "5-10 lowercase keywords",
+        },
         "aesthetic_score": {"type": "number", "description": "0-10 subjective aesthetic estimate"},
         "confidence": {"type": "number", "description": "0-1 confidence in this critique"},
     },
@@ -152,6 +173,30 @@ SYSTEM_PROMPT = (
     "(e.g. exposure compensation in 1/3 EV steps, shutter speed, aperture, AF mode, "
     "composition). Respond only with JSON matching the schema."
 )
+
+
+def schema_instructions() -> str:
+    """Spell the schema out in the prompt for models that ignore constrained decoding."""
+    lines = []
+    for key, spec in CRITIQUE_SCHEMA["properties"].items():
+        kind = "array of strings" if spec["type"] == "array" else spec["type"]
+        desc = spec.get("description")
+        lines.append(f'- "{key}" ({kind})' + (f": {desc}" if desc else ""))
+    return (
+        "Reply with one JSON object and nothing else (no markdown fences, no prose). "
+        "Use exactly these keys:\n" + "\n".join(lines)
+    )
+
+
+def extract_json_object(text: str) -> dict[str, Any]:
+    """Parse the first JSON object in a model reply, tolerating fences and surrounding prose."""
+    start = text.find("{")
+    if start < 0:
+        raise ValueError("no JSON object in model reply")
+    obj, _ = json.JSONDecoder().raw_decode(text[start:])
+    if not isinstance(obj, dict):
+        raise ValueError("model reply is not a JSON object")
+    return obj
 
 
 def encode_preview(preview: Path, max_edge: int = 1024, quality: int = 85) -> str:

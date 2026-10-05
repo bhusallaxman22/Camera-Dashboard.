@@ -58,8 +58,13 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4.1-mini"
     openai_base_url: str = "https://api.openai.com/v1"
     ollama_url: str = ""
-    ollama_model: str = "qwen2.5vl:7b"
-    ai_timeout_seconds: float = 120.0
+    ollama_model: str = "gemma4:26b"
+    # Reasoning models (gemma4, qwen3) think by default, which turns ~25 s critiques into
+    # many minutes. Empty leaves it to the model; non-thinking models accept `false`.
+    ollama_think: bool | None = False
+    ollama_keep_alive: str = "30m"
+    # Generous: the first request after idle includes loading the model into VRAM.
+    ai_timeout_seconds: float = 300.0
 
     immich_enabled: bool = False
     immich_url: str = ""
@@ -93,9 +98,9 @@ class Settings(BaseSettings):
             return [s.strip() for s in v.split(",") if s.strip()]
         return v
 
-    @field_validator("unsorted_root", mode="before")
+    @field_validator("unsorted_root", "ollama_think", mode="before")
     @classmethod
-    def _empty_root_disables(cls, v: object) -> object:
+    def _empty_means_unset(cls, v: object) -> object:
         return None if isinstance(v, str) and not v.strip() else v
 
     @field_validator("database_url")

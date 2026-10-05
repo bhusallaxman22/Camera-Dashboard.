@@ -25,10 +25,16 @@ services:
       SMB_PHOTO_ROOT: ${SMB_PHOTO_ROOT:-}
       WATCH_MODE: ${WATCH_MODE:-auto}
       WORKER_PROCESSES: ${WORKER_PROCESSES:-1}
-      AI_PROVIDER: ${AI_PROVIDER:-local}
+      # Vision critiques on the NAS GPU via Ollama (~25 s per photo once the model is
+      # loaded). AI_PROVIDER=local gives the offline heuristic critique instead.
+      AI_PROVIDER: ${AI_PROVIDER:-ollama}
+      AI_AUTO_ANALYZE: ${AI_AUTO_ANALYZE:-true}
+      OLLAMA_URL: ${OLLAMA_URL:-http://192.168.0.142:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma4:26b}
+      OLLAMA_THINK: ${OLLAMA_THINK:-false}
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-300}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OLLAMA_URL: ${OLLAMA_URL:-}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5vl:7b}
       IMMICH_ENABLED: ${IMMICH_ENABLED:-false}
       IMMICH_URL: ${IMMICH_URL:-}
       IMMICH_PUBLIC_URL: ${IMMICH_PUBLIC_URL:-}

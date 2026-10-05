@@ -241,6 +241,7 @@ export default function SystemPage() {
   });
 
   const s = sys.data;
+  const aiModel = s?.config.ai_providers.find((p) => p.active)?.model;
   const roots = (s?.components.photo_roots?.data?.roots ?? []) as RootStatus[];
   const workers = (s?.components.worker?.data?.workers ?? []) as {
     name: string;
@@ -374,7 +375,9 @@ export default function SystemPage() {
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
                 <dt className="text-ink-400">AI provider</dt>
                 <dd className="text-right">
-                  {s.config.ai_provider} {s.config.ai_auto_analyze ? "· auto" : "· manual"}
+                  {s.config.ai_provider}
+                  {aiModel && <span className="text-ink-400"> · {aiModel}</span>}
+                  {s.config.ai_auto_analyze ? " · auto" : " · manual"}
                 </dd>
                 <dt className="text-ink-400">Providers</dt>
                 <dd className="flex flex-wrap justify-end gap-1">

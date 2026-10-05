@@ -175,9 +175,14 @@ Admin commands run inside the container as the app user, e.g.
 `sudo docker exec z6iii-ai z6iii python -m app.cli stats` (prefixing `z6iii` keeps generated files
 owned by `PUID`). `WORKER_PROCESSES=2` adds workers for big imports.
 
-> The GHCR package is private on first publish. Either make it public (GitHub → your profile →
-> Packages → `camera-dashboard` → Package settings → Change visibility) or run
-> `sudo docker login ghcr.io -u bhusallaxman22` on the NAS with a token that has `read:packages`.
+**AI critiques** default to Ollama at `http://192.168.0.142:11434` with `gemma4:26b` (see
+[AI providers](#ai-providers)); new photos are critiqued automatically, about 25 s each once the
+model is loaded. Photos imported before Ollama was enabled can be critiqued in bulk with
+`sudo docker exec z6iii-ai z6iii python -m app.cli reanalyze --ai`. Set `AI_PROVIDER=local` to
+run without a GPU.
+
+> The GHCR package is public, so Dockge pulls it without logging in. If you fork this into a
+> private package, run `sudo docker login ghcr.io` on the NAS with a token that has `read:packages`.
 
 ## Installation on TrueNAS SCALE (build from source)
 
@@ -282,7 +287,10 @@ All settings are environment variables; `.env.example` documents every one. The 
 | `BURST_MAX_GAP_SECONDS` | `1.0` | Max gap between frames of a burst. |
 | `INGEST_SESSION_GAP_MINUTES` / `CAMERA_ONLINE_MINUTES` | `20` / `5` | Upload-session grouping; how long the camera shows as “receiving”. |
 | `PREVIEW_MAX_EDGE`, `THUMBNAIL_SIZES` | `2560`, `256,512,1024` | Rendition sizes (change + `make rebuild-thumbnails ARGS=--all`). |
-| `AI_PROVIDER` | `local` | `local`, `openai`, `ollama` or `none`. See [AI providers](#ai-providers). |
+| `AI_PROVIDER` | `local` | `local`, `openai`, `ollama` or `none` (the Dockge stack defaults to `ollama`). See [AI providers](#ai-providers). |
+| `OLLAMA_URL` / `OLLAMA_MODEL` | empty / `gemma4:26b` | Ollama server and vision model. |
+| `OLLAMA_THINK` / `OLLAMA_KEEP_ALIVE` | `false` / `30m` | Reasoning off keeps critiques at ~25 s; how long the model stays in VRAM. |
+| `AI_TIMEOUT_SECONDS` | `300` | Per-critique limit, including a cold model load. |
 | `IMMICH_ENABLED` | `false` | Read-only Immich lookups/links. |
 | `API_TOKEN` | empty | Optional bearer token for `/api/v1`; the frontend proxy injects it automatically. |
 | `LOG_FORMAT` / `LOG_LEVEL` | `json` / `INFO` | `console` is easier to read by eye. |
@@ -446,9 +454,18 @@ are stored per run, so you can compare providers. Failures are recorded and neve
 | `AI_PROVIDER` | Setup | Notes |
 | --- | --- | --- |
 | `local` (default) | nothing | Offline heuristic critique from EXIF + measurements (exposure advice in ⅓ EV, shutter/handholding hints, face sharpness, clipping). Instant. |
-| `ollama` | `OLLAMA_URL=http://192.168.0.142:11434`, `OLLAMA_MODEL=qwen2.5vl:7b` | Runs on your own GPU; nothing leaves the LAN. `ollama pull qwen2.5vl:7b` first. Structured JSON output. |
+| `ollama` | `OLLAMA_URL=http://192.168.0.142:11434`, `OLLAMA_MODEL=gemma4:26b` | Runs on your own GPU; nothing leaves the LAN. Any model whose `ollama show` lists `vision` works (`gemma4:26b`, `qwen2.5vl:7b`, …). |
 | `openai` | `OPENAI_API_KEY=…`, optional `OPENAI_MODEL`, `OPENAI_BASE_URL` | Any OpenAI-compatible endpoint with vision + JSON-schema output (OpenAI, a LiteLLM/Ollama `/v1` gateway…). Sends a 1024 px preview. |
 | `none` | | Technical analysis only. |
+
+**Ollama notes.** `gemma4:26b` (a 26B mixture-of-experts model, Q4, ~18 GB) gives specific,
+useful critiques and fits on the Tesla P40; expect ~50 s to load it and ~25 s per photo after
+that. It ignores Ollama's JSON-schema `format`, so the schema is also spelled out in the prompt
+and replies are parsed tolerantly (code fences, surrounding text). Reasoning models think by
+default, which makes each critique take many minutes; `OLLAMA_THINK=false` (the default)
+turns that off. Critiques run on the worker's lowest-priority queue, so new uploads are still
+imported and rendered first. A failed or unreachable Ollama is recorded on the photo and in
+Activity; it never blocks ingest.
 
 `AI_AUTO_ANALYZE=false` stops automatic critiques; you can still run them per photo
 (*Re-analyze* on the photo page) or in bulk with `make reanalyze ARGS=--ai`. Adding a provider means one class in
@@ -576,8 +593,8 @@ make check                  # ruff, eslint, prettier, tsc, pytest, vitest, next 
 ## Roadmap
 
 **Phase 2 — AI photography critique.** Portrait-aware critique (subject/eye sharpness, face vs
-background exposure, separation), suggested next-shot settings, provider comparison, GPU-backed
-Ollama by default on the Tesla P40.
+background exposure, separation), suggested next-shot settings, provider comparison. GPU-backed
+Ollama critiques (`gemma4:26b`) are already the default in the Dockge stack.
 
 **Phase 3 — Smarter library.** Best-of-burst ranking, duplicate and near-duplicate detection,
 CLIP-style semantic search, natural-language queries (“portraits at f/1.4”, “clipped
