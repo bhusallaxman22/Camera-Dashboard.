@@ -1,0 +1,35 @@
+# Local toolchain (not part of the app)
+.tools/
+
+# Secrets
+.env
+*.env.local
+
+# Runtime data (bind-mounted volumes), DB dumps, demo captures
+data/*
+!data/.gitkeep
+!data/README.md
+backups/
+samples/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+*.egg-info/
+
+# Node
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

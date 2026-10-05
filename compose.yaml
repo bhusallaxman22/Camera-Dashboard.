@@ -1,0 +1,194 @@
+name: z6iii-ai
+
+# Z6III AI Studio — Dockge / docker compose stack.
+# All configuration lives in .env (see .env.example).
+
+x-backend-env: &backend-env
+  TZ: ${TZ:-UTC}
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-z6iii}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-z6iii}
+  REDIS_URL: redis://redis:6379/0
+  PHOTO_ROOT: ${PHOTO_ROOT:-/photos}
+  JPEG_ROOT: ${JPEG_ROOT:-/photos/immich-jpeg}
+  RAW_ROOT: ${RAW_ROOT:-/photos/raw}
+  VIDEO_ROOT: ${VIDEO_ROOT:-/photos/video}
+  UNSORTED_ROOT: ${UNSORTED_ROOT-/photos/unsorted}
+  DATA_ROOT: ${DATA_ROOT:-/data}
+  THUMBNAIL_ROOT: ${THUMBNAIL_ROOT:-/data/thumbnails}
+  PREVIEW_ROOT: ${PREVIEW_ROOT:-/data/previews}
+  CACHE_ROOT: ${CACHE_ROOT:-/data/cache}
+  NAS_PHOTO_ROOT: ${NAS_PHOTO_ROOT:-/mnt/mainpool/photos/z6iii}
+  SMB_PHOTO_ROOT: ${SMB_PHOTO_ROOT:-}
+  WATCH_ENABLED: ${WATCH_ENABLED:-true}
+  WATCH_MODE: ${WATCH_MODE:-auto}
+  WATCH_POLL_INTERVAL_SECONDS: ${WATCH_POLL_INTERVAL_SECONDS:-2}
+  FILE_STABLE_SECONDS: ${FILE_STABLE_SECONDS:-3}
+  SCAN_ON_STARTUP: ${SCAN_ON_STARTUP:-true}
+  RECONCILE_INTERVAL_MINUTES: ${RECONCILE_INTERVAL_MINUTES:-30}
+  PAIR_WINDOW_SECONDS: ${PAIR_WINDOW_SECONDS:-2}
+  BURST_MAX_GAP_SECONDS: ${BURST_MAX_GAP_SECONDS:-1.0}
+  INGEST_SESSION_GAP_MINUTES: ${INGEST_SESSION_GAP_MINUTES:-20}
+  CAMERA_ONLINE_MINUTES: ${CAMERA_ONLINE_MINUTES:-5}
+  PREVIEW_MAX_EDGE: ${PREVIEW_MAX_EDGE:-2560}
+  PREVIEW_QUALITY: ${PREVIEW_QUALITY:-85}
+  THUMBNAIL_SIZES: ${THUMBNAIL_SIZES:-256,512,1024}
+  THUMBNAIL_QUALITY: ${THUMBNAIL_QUALITY:-80}
+  AI_PROVIDER: ${AI_PROVIDER:-local}
+  AI_AUTO_ANALYZE: ${AI_AUTO_ANALYZE:-true}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+  OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+  OLLAMA_URL: ${OLLAMA_URL:-}
+  OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5vl:7b}
+  AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-120}
+  IMMICH_ENABLED: ${IMMICH_ENABLED:-false}
+  IMMICH_URL: ${IMMICH_URL:-}
+  IMMICH_PUBLIC_URL: ${IMMICH_PUBLIC_URL:-}
+  IMMICH_API_KEY: ${IMMICH_API_KEY:-}
+  API_TOKEN: ${API_TOKEN:-}
+  CORS_ORIGINS: ${CORS_ORIGINS:-}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  LOG_FORMAT: ${LOG_FORMAT:-json}
+
+x-backend-volumes: &backend-volumes
+  # Originals: READ-ONLY. The app never writes, moves, renames or deletes them.
+  - ${PHOTO_HOST_ROOT:-/mnt/mainpool/photos/z6iii}:/photos:ro
+  - ${APP_DATA_DIR:-./data}:/data
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: z6iii-ai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-z6iii}
+      POSTGRES_USER: ${POSTGRES_USER:-z6iii}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ${APP_DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks: [internal]
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    container_name: z6iii-ai-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
+    volumes:
+      - ${APP_DATA_DIR:-./data}/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+    logging: *logging
+
+  backend:
+    build:
+      context: ./backend
+    image: z6iii-ai-backend:local
+    container_name: z6iii-ai-backend
+    restart: unless-stopped
+    user: "${PUID:-568}:${PGID:-568}"
+    command: ["/app/docker-entrypoint.sh", "api"]
+    environment: *backend-env
+    volumes: *backend-volumes
+    ports:
+      - "${BACKEND_PORT:-8766}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks: [internal, web]
+    logging: *logging
+
+  worker:
+    image: z6iii-ai-backend:local
+    container_name: z6iii-ai-worker
+    restart: unless-stopped
+    user: "${PUID:-568}:${PGID:-568}"
+    command: ["/app/docker-entrypoint.sh", "worker", "ingest", "analysis", "ai"]
+    environment: *backend-env
+    volumes: *backend-volumes
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.cli", "healthcheck", "worker"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks: [internal]
+    logging: *logging
+
+  watcher:
+    image: z6iii-ai-backend:local
+    container_name: z6iii-ai-watcher
+    restart: unless-stopped
+    user: "${PUID:-568}:${PGID:-568}"
+    command: ["/app/docker-entrypoint.sh", "watcher"]
+    environment: *backend-env
+    volumes: *backend-volumes
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.cli", "healthcheck", "watcher"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks: [internal]
+    logging: *logging
+
+  frontend:
+    build:
+      context: ./frontend
+    image: z6iii-ai-frontend:local
+    container_name: z6iii-ai-frontend
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-UTC}
+      # Server-side only: the browser always talks to the frontend origin and
+      # the Next.js server proxies /api/* to the backend on the Docker network.
+      BACKEND_INTERNAL_URL: http://backend:8000
+      API_TOKEN: ${API_TOKEN:-}
+    ports:
+      - "${FRONTEND_PORT:-8765}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks: [web]
+    logging: *logging
+
+networks:
+  # Postgres/Redis live only here and are never published.
+  internal:
+  web:

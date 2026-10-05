@@ -1,0 +1,30 @@
+# Web / API
+fastapi==0.142.2
+uvicorn[standard]==0.54.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+
+# Database
+sqlalchemy==2.1.1
+psycopg[binary]==3.3.6
+alembic==1.20.0
+
+# Queue / cache
+redis==8.1.0
+rq==2.12.0
+
+# Filesystem
+watchdog==6.0.0
+
+# Imaging
+pillow==12.3.0
+pillow-heif==1.8.0
+numpy==2.5.3
+opencv-python-headless==5.0.0.93
+rawpy==0.27.1
+
+# Observability / CLI / HTTP
+prometheus-client==0.26.0
+structlog==26.1.0
+typer==0.27.2
+httpx==0.28.1
