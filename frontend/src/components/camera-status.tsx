@@ -1,73 +1,85 @@
 "use client";
 
-import { Camera, Radio } from "lucide-react";
+import { AlertTriangle, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { formatBytes, formatRelative } from "@/lib/format";
 import { useNow } from "@/lib/hooks";
-import type { CameraStatus as CameraStatusT } from "@/lib/types";
+import type { Stats } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "./ui/skeleton";
 
-const COPY = {
-  receiving: { label: "Receiving", sub: "Camera is uploading over FTP" },
-  idle: { label: "Idle", sub: "No uploads in the last few minutes" },
-  never: { label: "Waiting", sub: "No uploads recorded yet" },
-} as const;
+const STATE_LABEL = { receiving: "Receiving", idle: "Idle", never: "Waiting for first upload" } as const;
 
-export function CameraStatusCard({ status }: { status: CameraStatusT | undefined }) {
+function plural(n: number, word: string) {
+  return `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
+}
+
+/** One line of shoot context, so the latest frame can own the screen. */
+export function CameraStatusBar({ stats }: { stats: Stats | undefined }) {
   const now = useNow(5_000);
-  const state = status?.state ?? "never";
-  const copy = COPY[state];
+  if (!stats) return <Skeleton className="h-12 w-full rounded-xl" />;
+
+  const { camera, today, totals } = stats;
+  const receiving = camera.state === "receiving";
+  const backlog = totals.pending > 0 || totals.errors > 0;
+
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl border p-4",
-        state === "receiving" ? "border-ok/30 bg-ok/[0.04]" : "border-ink-800 bg-ink-900/80",
+        "flex flex-wrap items-center gap-x-5 gap-y-1.5 rounded-xl border px-4 py-2.5 text-sm",
+        receiving ? "border-ok/30 bg-ok/[0.04]" : "border-ink-800 bg-ink-900/80",
       )}
       data-testid="camera-status"
     >
-      <div className="flex items-start gap-3">
+      <span className="flex min-w-0 items-center gap-2">
         <span
-          className={cn(
-            "grid size-10 place-items-center rounded-lg",
-            state === "receiving" ? "bg-ok/15 text-ok" : "bg-ink-800 text-ink-400",
-          )}
-        >
-          {state === "receiving" ? <Radio className="size-5" /> : <Camera className="size-5" />}
+          className={cn("size-2 shrink-0 rounded-full", receiving ? "pulse-ring bg-ok" : "bg-ink-400")}
+          aria-hidden
+        />
+        <span className="truncate font-semibold">{camera.camera ?? "Nikon Z6III"}</span>
+        <span className={receiving ? "text-ok" : "text-ink-300"}>{STATE_LABEL[camera.state]}</span>
+        {camera.last_upload_at && (
+          <span className="text-ink-300 tabular">· {formatRelative(camera.last_upload_at, now)}</span>
+        )}
+      </span>
+
+      {camera.session_photos > 0 && (
+        <span className="text-ink-300 tabular">
+          Session <span className="text-ink-100">{plural(camera.session_photos, "photo")}</span> ·{" "}
+          {formatBytes(camera.session_bytes)}
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">{status?.camera ?? "Nikon Z6III"}</span>
-            <span
-              className={cn(
-                "flex items-center gap-1.5 text-xs",
-                state === "receiving" ? "text-ok" : "text-ink-400",
-              )}
-            >
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  state === "receiving" ? "pulse-ring bg-ok" : "bg-ink-500",
-                )}
-              />
-              {copy.label}
-            </span>
-          </div>
-          <p className="text-ink-400 text-xs">{copy.sub}</p>
-        </div>
-      </div>
-      <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
-        <div>
-          <dt className="text-ink-500 text-[10px] tracking-wider uppercase">Last upload</dt>
-          <dd className="tabular text-sm">{formatRelative(status?.last_upload_at, now)}</dd>
-        </div>
-        <div>
-          <dt className="text-ink-500 text-[10px] tracking-wider uppercase">Session</dt>
-          <dd className="tabular text-sm">{status?.session_photos ?? 0} photos</dd>
-        </div>
-        <div>
-          <dt className="text-ink-500 text-[10px] tracking-wider uppercase">Transferred</dt>
-          <dd className="tabular text-sm">{formatBytes(status?.session_bytes ?? 0)}</dd>
-        </div>
-      </dl>
+      )}
+
+      {today.photos > 0 && (
+        <span className="text-ink-300 tabular">
+          Today <span className="text-ink-100">{today.photos.toLocaleString()}</span> ·{" "}
+          {plural(today.picks, "pick")} · {plural(today.rejects, "reject")}
+        </span>
+      )}
+
+      {backlog && (
+        <Link
+          href="/system"
+          className="text-warn hover:text-ink-100 tabular flex items-center gap-1.5"
+          title="Open System to see queues and failed jobs"
+        >
+          <AlertTriangle className="size-3.5" />
+          {[
+            totals.pending > 0 && `${totals.pending.toLocaleString()} processing`,
+            totals.errors > 0 && plural(totals.errors, "error"),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </Link>
+      )}
+
+      <Link
+        href="/library"
+        className="text-ink-300 hover:text-accent tabular ml-auto flex items-center gap-1"
+      >
+        Library <span className="text-ink-100">{totals.photos.toLocaleString()}</span>
+        <ArrowRight className="size-3.5" />
+      </Link>
     </div>
   );
 }

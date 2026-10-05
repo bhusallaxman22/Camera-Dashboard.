@@ -1,22 +1,22 @@
 "use client";
 
-import { Activity, ArrowRight, Camera, Files, HardDrive, ImageIcon, Sparkles } from "lucide-react";
+import { Activity, Camera, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { ActivityFeed } from "@/components/activity-feed";
 import { AnalysisPanel } from "@/components/analysis-panel";
-import { CameraStatusCard } from "@/components/camera-status";
+import { CameraStatusBar } from "@/components/camera-status";
 import { CritiquePanel } from "@/components/critique-panel";
 import { CullingControls } from "@/components/culling-controls";
 import { ExposureStrip } from "@/components/metadata-grid";
 import { PhotoActions } from "@/components/photo-actions";
 import { FileKindBadges, PhotoThumb } from "@/components/photo-thumb";
-import { StatTile } from "@/components/stat-tile";
+import { VerdictStrip } from "@/components/verdict-strip";
 import { useToast } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatBytes, formatDateTime } from "@/lib/format";
+import { formatBytes, formatDateTime, formatTime } from "@/lib/format";
 import { usePhoto, usePhotoUpdate, useStats } from "@/lib/hooks";
 import { useLiveListener } from "@/lib/live";
 import type { PhotoDetail } from "@/lib/types";
@@ -29,14 +29,14 @@ function LatestPhoto({ photo }: { photo: PhotoDetail }) {
       <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Link
           href={`/photos/${photo.id}`}
-          className="checker bg-ink-950 relative grid min-h-72 place-items-center xl:min-h-[30rem]"
+          className="checker bg-ink-950 relative grid min-h-56 place-items-center sm:min-h-72 xl:min-h-[30rem] xl:self-start"
         >
           {photo.preview_url ? (
             <img
               key={photo.preview_url}
               src={photo.preview_url}
               alt={photo.base_filename}
-              className="animate-fade-in max-h-[70vh] w-full object-contain"
+              className="animate-fade-in max-h-[58vh] w-full object-contain sm:max-h-[70vh]"
             />
           ) : (
             <span className="text-ink-500 text-sm">
@@ -51,16 +51,23 @@ function LatestPhoto({ photo }: { photo: PhotoDetail }) {
 
         <div className="border-ink-800 flex flex-col gap-4 border-t p-4 xl:border-t-0 xl:border-l">
           <div>
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-baseline justify-between gap-2">
               <Link href={`/photos/${photo.id}`} className="hover:text-accent font-mono text-lg">
                 {photo.base_filename}
               </Link>
-              <span className="text-ink-400 text-xs">{formatDateTime(photo.capture_time)}</span>
+              <time
+                dateTime={photo.capture_time ?? undefined}
+                title={formatDateTime(photo.capture_time)}
+                className="text-ink-300 tabular text-xs"
+              >
+                {formatTime(photo.capture_time)}
+              </time>
             </div>
-            <p className="text-ink-400 truncate text-sm">
+            <p className="text-ink-300 truncate text-sm">
               {[photo.camera, photo.lens_model].filter(Boolean).join(" · ") || "Unknown camera"}
             </p>
           </div>
+          <VerdictStrip photo={photo} />
           <ExposureStrip photo={photo} />
           <CullingControls photo={photo} onUpdate={(b) => update.mutate(b)} />
 
@@ -132,54 +139,9 @@ export default function DashboardPage() {
 
   const s = stats.data;
   return (
-    <div className="mx-auto max-w-[1600px] space-y-5 p-4 md:p-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Studio</h1>
-          <p className="text-ink-400 text-sm">
-            Live ingest from your Z6III, paired, analyzed and ready to cull.
-          </p>
-        </div>
-        <Link href="/library" className="text-ink-300 hover:text-accent flex items-center gap-1 text-sm">
-          Open library <ArrowRight className="size-4" />
-        </Link>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_repeat(4,minmax(0,1fr))]">
-        <CameraStatusCard status={s?.camera} />
-        <StatTile
-          label="Today"
-          icon={<Camera className="size-3.5" />}
-          value={s ? s.today.photos : "—"}
-          hint={s ? `${s.today.picks} picks · ${s.today.rejects} rejects` : undefined}
-        />
-        <StatTile
-          label="Files today"
-          icon={<Files className="size-3.5" />}
-          value={s ? s.today.raw_files + s.today.jpeg_files + s.today.videos : "—"}
-          hint={
-            s ? `${s.today.raw_files} RAW · ${s.today.jpeg_files} JPEG · ${s.today.videos} video` : undefined
-          }
-        />
-        <StatTile
-          label="Library"
-          icon={<ImageIcon className="size-3.5" />}
-          value={s ? s.totals.photos.toLocaleString() : "—"}
-          hint={s ? `${s.totals.favorites} favorites · ${s.totals.rejected} rejected` : undefined}
-        />
-        <StatTile
-          label="Storage"
-          icon={<HardDrive className="size-3.5" />}
-          value={s ? formatBytes(s.totals.bytes) : "—"}
-          hint={
-            s && (s.totals.pending > 0 || s.totals.errors > 0)
-              ? `${s.totals.pending} processing · ${s.totals.errors} errors`
-              : s
-                ? `${formatBytes(s.today.bytes)} today`
-                : undefined
-          }
-        />
-      </div>
+    <div className="mx-auto max-w-[1600px] space-y-4 p-3 sm:p-4 md:space-y-5 md:p-6">
+      <h1 className="sr-only">Dashboard</h1>
+      <CameraStatusBar stats={s} />
 
       {latest.data ? (
         <LatestPhoto photo={latest.data} />
@@ -213,6 +175,12 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
                 {s.recent.map((p) => (
                   <PhotoThumb key={p.id} photo={p} />
+                ))}
+              </div>
+            ) : stats.isLoading ? (
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <Skeleton key={i} className="aspect-[3/2] w-full" />
                 ))}
               </div>
             ) : (
