@@ -1,0 +1,81 @@
+# Z6III AI Studio — Dockge stack using the prebuilt image from GHCR.
+# Paste into a new Dockge stack. Only POSTGRES_PASSWORD is required in the
+# stack's .env; everything else has a default (see deploy/.env.example).
+services:
+  z6iii-ai:
+    image: ghcr.io/bhusallaxman22/camera-dashboard:${IMAGE_TAG:-latest}
+    container_name: z6iii-ai
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - ${FRONTEND_PORT:-8765}:3000 # web UI
+      - ${BACKEND_PORT:-8766}:8000 # API, /docs, /metrics
+    environment:
+      TZ: ${TZ:-America/Chicago}
+      # Runs as this user after preparing /data. Needs READ access to the photos.
+      PUID: ${PUID:-568}
+      PGID: ${PGID:-568}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-z6iii}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the stack .env}@postgres:5432/${POSTGRES_DB:-z6iii}
+      REDIS_URL: redis://redis:6379/0
+      NAS_PHOTO_ROOT: ${PHOTO_HOST_ROOT:-/mnt/mainpool/photos/z6iii}
+      SMB_PHOTO_ROOT: ${SMB_PHOTO_ROOT:-}
+      WATCH_MODE: ${WATCH_MODE:-auto}
+      WORKER_PROCESSES: ${WORKER_PROCESSES:-1}
+      AI_PROVIDER: ${AI_PROVIDER:-local}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OLLAMA_URL: ${OLLAMA_URL:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5vl:7b}
+      IMMICH_ENABLED: ${IMMICH_ENABLED:-false}
+      IMMICH_URL: ${IMMICH_URL:-}
+      IMMICH_PUBLIC_URL: ${IMMICH_PUBLIC_URL:-}
+      IMMICH_API_KEY: ${IMMICH_API_KEY:-}
+      API_TOKEN: ${API_TOKEN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+    volumes:
+      # Originals: READ-ONLY. The app never writes, moves, renames or deletes them.
+      - ${PHOTO_HOST_ROOT:-/mnt/mainpool/photos/z6iii}:/photos:ro
+      - ${APP_DATA_DIR:-/mnt/mainpool/apps/z6iii-ai/data}:/data
+    stop_grace_period: 30s
+
+  postgres:
+    image: postgres:16
+    container_name: z6iii-ai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-z6iii}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the stack .env}
+      POSTGRES_DB: ${POSTGRES_DB:-z6iii}
+      TZ: ${TZ:-America/Chicago}
+    volumes:
+      - ${POSTGRES_DATA_DIR:-/mnt/mainpool/apps/z6iii-ai/postgres}:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER:-z6iii} -d ${POSTGRES_DB:-z6iii}
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Reachable only by the app on the stack network. To reach it from the LAN
+    # (e.g. pgAdmin), uncomment:
+    # ports:
+    #   - 5921:5432
+
+  redis:
+    image: redis:7
+    container_name: z6iii-ai-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
+    volumes:
+      - ${REDIS_DATA_DIR:-/mnt/mainpool/apps/z6iii-ai/redis}:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+networks: {}

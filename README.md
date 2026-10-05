@@ -19,7 +19,8 @@ notes live only in the app database.
 - [Architecture](#architecture)
 - [Requirements](#requirements)
 - [Folder layout](#folder-layout)
-- [Installation on TrueNAS SCALE](#installation-on-truenas-scale)
+- [Quick deploy with Dockge (prebuilt image)](#quick-deploy-with-dockge-prebuilt-image)
+- [Installation on TrueNAS SCALE (build from source)](#installation-on-truenas-scale-build-from-source)
 - [Dockge setup](#dockge-setup)
 - [`.env` configuration](#env-configuration)
 - [Docker / Make commands](#docker--make-commands)
@@ -152,7 +153,33 @@ Photo dataset (read-only to the app), as produced by the sorter:
 └── unsorted/       # ignored
 ```
 
-## Installation on TrueNAS SCALE
+## Quick deploy with Dockge (prebuilt image)
+
+CI publishes an all-in-one image (API, worker, watcher and web UI in one container) to
+`ghcr.io/bhusallaxman22/camera-dashboard` on every push to `master`, tagged `latest` and
+`sha-<commit>` (plus `X.Y.Z` / `X.Y` for `vX.Y.Z` git tags). Postgres and Redis run as their own
+containers next to it. Nothing needs to be built on the NAS.
+
+1. In Dockge, **+ Compose** → name it `z6iii-ai` → paste [`deploy/compose.yaml`](deploy/compose.yaml).
+2. In the stack's **.env** panel, paste [`deploy/.env.example`](deploy/.env.example) and set
+   `POSTGRES_PASSWORD` (`openssl rand -hex 24`). Adjust the paths if your datasets differ.
+3. **Deploy.** The data folders are created automatically; the app prepares `/data` as root, then
+   drops to `PUID`/`PGID` (568, TrueNAS `apps`), which needs **read** access to the photos:
+   `sudo -u apps ls /mnt/mainpool/photos/z6iii/immich-jpeg`.
+4. Open `http://<nas>:8765`. Existing photos import automatically.
+
+**Updating:** click **Update** in Dockge (pulls `latest`). To pin or roll back, set
+`IMAGE_TAG=sha-xxxxxxx` (the commit shown on GitHub) and Update again. Migrations run on start.
+
+Admin commands run inside the container as the app user, e.g.
+`sudo docker exec z6iii-ai z6iii python -m app.cli stats` (prefixing `z6iii` keeps generated files
+owned by `PUID`). `WORKER_PROCESSES=2` adds workers for big imports.
+
+> The GHCR package is private on first publish. Either make it public (GitHub → your profile →
+> Packages → `camera-dashboard` → Package settings → Change visibility) or run
+> `sudo docker login ghcr.io -u bhusallaxman22` on the NAS with a token that has `read:packages`.
+
+## Installation on TrueNAS SCALE (build from source)
 
 These steps assume the project lives at **`/mnt/mainpool/configs/z6iii-ai`** and the photos at
 **`/mnt/mainpool/photos/z6iii`**. Run them in a TrueNAS shell (System → Shell, or SSH) as an
