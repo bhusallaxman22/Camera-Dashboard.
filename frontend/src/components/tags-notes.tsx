@@ -38,7 +38,7 @@ export function TagsNotes({
             <button
               type="button"
               onClick={() => onUpdate({ tags: names.filter((n) => n !== t.name) })}
-              className="text-ink-500 hover:bg-ink-700 hover:text-ink-100 rounded-full p-0.5"
+              className="text-ink-400 hover:bg-ink-700 hover:text-ink-100 rounded-full p-0.5"
               aria-label={`Remove tag ${t.name}`}
             >
               <X className="size-3" />
@@ -74,7 +74,7 @@ export function TagsNotes({
         rows={3}
         maxLength={10000}
         placeholder="Notes (saved when you click away)"
-        className="border-ink-700 bg-ink-850 text-ink-100 placeholder:text-ink-500 focus:border-accent/60 w-full resize-y rounded-md border px-2.5 py-2 text-sm focus:outline-none"
+        className="border-ink-700 bg-ink-850 text-ink-100 placeholder:text-ink-400 focus:border-accent/60 w-full resize-y rounded-md border px-2.5 py-2 text-sm focus:outline-none"
         aria-label="Notes"
       />
     </div>

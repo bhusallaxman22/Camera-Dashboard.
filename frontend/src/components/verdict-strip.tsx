@@ -84,7 +84,7 @@ export function VerdictStrip({ photo, className }: { photo: PhotoDetail; classNa
       {cells.map((c) => (
         <div key={c.label} className="min-w-0 px-2 first:pl-0 last:pr-0">
           <dt className="text-ink-300 truncate text-xs">{c.label}</dt>
-          <dd className={cn("tabular mt-0.5 text-xl leading-tight font-semibold", TONE_TEXT[c.tone])}>
+          <dd className={cn("mt-0.5 font-mono text-2xl leading-tight font-semibold", TONE_TEXT[c.tone])}>
             {c.value}
           </dd>
           <dd className={cn("truncate text-xs", TONE_TEXT[c.tone])}>{c.verdict || "\u00a0"}</dd>

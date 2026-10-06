@@ -41,7 +41,7 @@ export function Histogram({
 
   if (!paths) {
     return (
-      <div className={cn("text-ink-500 grid h-24 place-items-center text-xs", className)}>No histogram</div>
+      <div className={cn("text-ink-300 grid h-24 place-items-center text-xs", className)}>No histogram</div>
     );
   }
 

@@ -13,9 +13,13 @@ import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 60;
 
+// On phones "large" is a single review column and "medium" two columns, so captions never clip.
 const DENSITY = {
-  large: { grid: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5", thumb: 1024 },
-  medium: { grid: "grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8", thumb: 512 },
+  large: {
+    grid: "grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5",
+    thumb: 1024,
+  },
+  medium: { grid: "grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8", thumb: 512 },
 } as const;
 
 function LibraryInner() {
@@ -62,11 +66,11 @@ function LibraryInner() {
   const detailQs = params.toString();
 
   return (
-    <div className="mx-auto max-w-[1800px] space-y-4 p-4 md:p-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="mx-auto max-w-[1800px] space-y-3 p-3 sm:space-y-4 sm:p-4 md:p-6">
+      <div className="flex items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Library</h1>
-          <p className="text-ink-400 tabular text-sm" data-testid="library-count">
+          <p className="text-ink-300 tabular text-sm" data-testid="library-count">
             {query.isLoading ? "Loading…" : `${total.toLocaleString()} photo${total === 1 ? "" : "s"}`}
           </p>
         </div>
@@ -107,11 +111,11 @@ function LibraryInner() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="border-ink-800 text-ink-500 grid h-60 place-items-center rounded-xl border border-dashed text-sm">
+        <div className="border-ink-700 text-ink-200 grid h-60 place-items-center rounded-xl border border-dashed text-sm">
           No photos match these filters.
         </div>
       ) : (
-        <div className={cn("grid gap-2.5", DENSITY[density].grid)} data-testid="library-grid">
+        <div className={cn("grid items-start gap-2.5", DENSITY[density].grid)} data-testid="library-grid">
           {items.map((p) => (
             <PhotoThumb key={p.id} photo={p} href={`/photos/${p.id}${detailQs ? `?${detailQs}` : ""}`} />
           ))}
@@ -119,7 +123,7 @@ function LibraryInner() {
       )}
 
       <div ref={sentinel} className="flex h-16 items-center justify-center">
-        {isFetchingNextPage && <Loader2 className="text-ink-500 size-5 animate-spin" />}
+        {isFetchingNextPage && <Loader2 className="text-ink-300 size-5 animate-spin" />}
       </div>
     </div>
   );
@@ -127,7 +131,7 @@ function LibraryInner() {
 
 export default function LibraryPage() {
   return (
-    <Suspense fallback={<div className="text-ink-500 p-6 text-sm">Loading…</div>}>
+    <Suspense fallback={<div className="text-ink-300 p-6 text-sm">Loading…</div>}>
       <LibraryInner />
     </Suspense>
   );

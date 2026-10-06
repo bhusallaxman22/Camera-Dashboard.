@@ -17,12 +17,15 @@ from app.models import Photo, PhotoFile, Tag
 from app.models.enums import JobKind, RenditionKind
 from app.schemas.photo import (
     AnalyzeRequest,
+    BestPhoto,
+    BestPhotos,
     BulkUpdate,
     Facets,
     PhotoDetail,
     PhotoPage,
     PhotoUpdate,
 )
+from app.services.best import Period, find_best
 from app.services.events import publish_after_commit, record_event
 from app.services.immich import ImmichClient, ImmichError
 from app.services.photos import PhotoFilters, SortKey, get_photo, list_photos, set_tags, to_detail, to_summary
@@ -114,6 +117,33 @@ def facets(db: DB) -> Facets:
         focal_range=tuple(focal),
         aperture_range=tuple(ap),
         date_range=tuple(dates),
+    )
+
+
+@router.get("/best", response_model=BestPhotos)
+def best(
+    db: DB,
+    period: Period = "today",
+    limit: Annotated[int, Query(ge=1, le=48)] = 12,
+    thumb: Annotated[int, Query(ge=128, le=1024)] = 512,
+) -> BestPhotos:
+    """Strongest frames in a period: AI aesthetic estimate blended with measured
+    sharpness and eye focus, one frame per burst, rejects excluded."""
+    start, candidates, ai_scored, ranked = find_best(db, period, limit)
+    return BestPhotos(
+        period=period,
+        period_start=start,
+        candidates=candidates,
+        ai_scored=ai_scored,
+        items=[
+            BestPhoto(
+                photo=to_summary(p, thumb),
+                score=r.score,
+                aesthetic_score=r.aesthetic,
+                eye_sharpness=r.eye_sharpness,
+            )
+            for p, r in ranked
+        ],
     )
 
 

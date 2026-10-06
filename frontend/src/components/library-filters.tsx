@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { RotateCcw, Search } from "lucide-react";
+import { RotateCcw, Search, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -44,10 +44,10 @@ function Chip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "rounded-full px-2.5 py-1 text-xs transition-colors",
+        "h-8 shrink-0 rounded-full px-3 text-sm whitespace-nowrap transition-colors pointer-coarse:h-10",
         active
           ? "bg-accent-soft text-accent ring-accent/40 ring-1"
-          : "bg-ink-850 text-ink-300 hover:bg-ink-800",
+          : "bg-ink-850 text-ink-200 hover:bg-ink-800 ring-ink-800 ring-1",
       )}
     >
       {children}
@@ -86,13 +86,15 @@ export function LibraryFilters({
 
   return (
     <div className="space-y-3" data-testid="library-filters">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-56 flex-1">
-          <Search className="text-ink-500 pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="text-ink-300 pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
           <Input
+            type="search"
+            enterKeyHint="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search filename, lens, scene, tags, notes, AI description…"
+            placeholder="Search filename, lens, scene, tags, AI description…"
             className="pl-8"
             aria-label="Search"
           />
@@ -100,7 +102,7 @@ export function LibraryFilters({
         <Select
           value={value.sort ?? "newest"}
           onChange={(e) => set("sort", e.target.value === "newest" ? undefined : e.target.value)}
-          className="w-44"
+          className="w-36 shrink-0 sm:w-44"
           aria-label="Sort"
         >
           {SORTS.map(([k, label]) => (
@@ -111,20 +113,25 @@ export function LibraryFilters({
         </Select>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="-mx-3 flex scrollbar-none items-center gap-1.5 overflow-x-auto px-3 sm:mx-0 sm:flex-wrap sm:px-0">
         {QUICK.map((c) => (
           <Chip key={c.label} active={value[c.key] === c.value} onClick={() => toggle(c.key, c.value)}>
             {c.label}
           </Chip>
         ))}
-        <span className="bg-ink-700 mx-1 h-4 w-px" />
+        <span className="bg-ink-700 mx-1 h-4 w-px shrink-0" />
         {[1, 2, 3, 4, 5].map((n) => (
           <Chip
             key={n}
             active={value.rating_min === String(n)}
             onClick={() => toggle("rating_min", String(n))}
           >
-            {"★".repeat(n)}+
+            <span className="flex items-center gap-1">
+              <Star className="size-3.5 fill-current" aria-hidden />
+              <span className="tabular">
+                {n}+<span className="sr-only"> stars</span>
+              </span>
+            </span>
           </Chip>
         ))}
         {(activeCount > 0 || value.q) && (
@@ -134,15 +141,15 @@ export function LibraryFilters({
               setQ("");
               onChange(value.sort ? { sort: value.sort } : {});
             }}
-            className="text-ink-400 hover:text-ink-100 ml-1 flex items-center gap-1 text-xs"
+            className="text-ink-200 hover:text-ink-100 ml-1 flex h-8 shrink-0 items-center gap-1.5 px-2 text-sm pointer-coarse:h-10"
           >
-            <RotateCcw className="size-3" /> Reset
+            <RotateCcw className="size-4" /> Reset
           </button>
         )}
       </div>
 
       <details className="group border-ink-800 bg-ink-900/60 rounded-lg border">
-        <summary className="text-ink-400 hover:text-ink-200 cursor-pointer list-none px-3 py-2 text-xs select-none">
+        <summary className="text-ink-200 hover:text-ink-100 flex h-11 cursor-pointer list-none items-center px-3 text-sm select-none">
           More filters {activeCount > 0 && <span className="text-accent">· {activeCount} active</span>}
         </summary>
         <div className="grid gap-3 px-3 pb-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">

@@ -2,7 +2,7 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 type Variant = "default" | "primary" | "ghost" | "outline" | "danger";
-type Size = "sm" | "md" | "icon";
+type Size = "sm" | "md" | "lg" | "icon";
 
 const VARIANTS: Record<Variant, string> = {
   default: "bg-ink-700 text-ink-100 hover:bg-ink-600",
@@ -12,10 +12,12 @@ const VARIANTS: Record<Variant, string> = {
   danger: "bg-bad/15 text-bad hover:bg-bad/25",
 };
 
+// Touch screens get 44px targets regardless of the visual size used on desktop.
 const SIZES: Record<Size, string> = {
-  sm: "h-7 px-2.5 text-xs gap-1.5",
-  md: "h-9 px-3.5 text-sm gap-2",
-  icon: "h-8 w-8 justify-center",
+  sm: "h-8 px-2.5 text-xs gap-1.5 pointer-coarse:h-11 pointer-coarse:px-2.5 pointer-coarse:text-sm",
+  md: "h-9 px-3.5 text-sm gap-2 pointer-coarse:h-11",
+  lg: "h-12 px-5 text-base gap-2 justify-center",
+  icon: "size-9 justify-center pointer-coarse:size-11",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

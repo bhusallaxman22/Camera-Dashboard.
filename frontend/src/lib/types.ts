@@ -46,6 +46,25 @@ export interface PhotoPage {
   has_more: boolean;
 }
 
+export type BestPeriod = "session" | "today" | "7d" | "all";
+
+export interface BestPhoto {
+  photo: PhotoSummary;
+  /** 0–100 blend of AI aesthetic, measured sharpness and eye focus. */
+  score: number;
+  /** 0–10 AI estimate; null when no vision model has scored the frame. */
+  aesthetic_score: number | null;
+  eye_sharpness: number | null;
+}
+
+export interface BestPhotos {
+  period: BestPeriod;
+  period_start: string | null;
+  candidates: number;
+  ai_scored: number;
+  items: BestPhoto[];
+}
+
 export interface PhotoFile {
   id: string;
   file_type: "jpeg" | "image" | "raw" | "video";

@@ -3,10 +3,13 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { api } from "@/lib/api";
+import type { BestPhotos as BestPhotosData } from "@/lib/types";
 import { detail, file, summary } from "@/test/fixtures";
 import { AnalysisPanel, sharpnessTone } from "./analysis-panel";
+import { BestPhotos } from "./best-photos";
 import { CritiquePanel } from "./critique-panel";
-import { CullingControls } from "./culling-controls";
+import { CullBar, CullingControls } from "./culling-controls";
 import { FilesPanel } from "./files-panel";
 import { Histogram } from "./histogram";
 import { MetadataGrid } from "./metadata-grid";
@@ -60,8 +63,74 @@ describe("CullingControls", () => {
   it("toggles an existing flag off", async () => {
     const onUpdate = vi.fn();
     render(<CullingControls photo={{ ...base, flag: "reject" }} onUpdate={onUpdate} />);
+    expect(screen.getByRole("button", { name: /reject/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /pick/i })).toHaveAttribute("aria-pressed", "false");
     await userEvent.click(screen.getByRole("button", { name: /reject/i }));
     expect(onUpdate).toHaveBeenLastCalledWith({ flag: "none" });
+  });
+
+  it("offers a thumb-zone bar with rating, favorite and flags", async () => {
+    const onUpdate = vi.fn();
+    render(<CullBar photo={{ ...base, rating: 2 }} onUpdate={onUpdate} />);
+    const bar = screen.getByTestId("cull-bar");
+    await userEvent.click(within(bar).getByRole("radio", { name: "5 stars" }));
+    expect(onUpdate).toHaveBeenLastCalledWith({ rating: 5 });
+    await userEvent.click(within(bar).getByRole("button", { name: "Favorite" }));
+    expect(onUpdate).toHaveBeenLastCalledWith({ favorite: true });
+    await userEvent.click(within(bar).getByRole("button", { name: /pick/i }));
+    expect(onUpdate).toHaveBeenLastCalledWith({ flag: "pick" });
+  });
+});
+
+describe("BestPhotos", () => {
+  function renderBest(data: BestPhotosData) {
+    vi.spyOn(api, "best").mockResolvedValue(data);
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <BestPhotos receiving={false} shotToday />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("shows measured factors rather than the blended score", async () => {
+    renderBest({
+      period: "today",
+      period_start: "2026-10-05T00:00:00Z",
+      candidates: 40,
+      ai_scored: 30,
+      items: [
+        {
+          photo: summary({ id: "a", base_filename: "DSC_0001" }),
+          score: 86.4,
+          aesthetic_score: 8.5,
+          eye_sharpness: 70,
+        },
+        {
+          photo: summary({ id: "b", base_filename: "DSC_0002" }),
+          score: 61,
+          aesthetic_score: null,
+          eye_sharpness: null,
+        },
+      ],
+    });
+    const cards = await screen.findAllByTestId("best-card");
+    expect(cards).toHaveLength(2);
+    expect(within(cards[0]!).getByText("AI 8.5")).toBeInTheDocument();
+    expect(within(cards[0]!).getByText("Eyes")).toBeInTheDocument();
+    expect(within(cards[0]!).getByText("70")).toBeInTheDocument();
+    expect(within(cards[0]!).queryByText("86")).not.toBeInTheDocument();
+    expect(within(cards[1]!).getByText("No AI")).toBeInTheDocument();
+    expect(within(cards[1]!).queryByText("Eyes")).not.toBeInTheDocument();
+    expect(screen.getByText(/30 of 40 frames have an AI score/)).toBeInTheDocument();
+    expect(api.best).toHaveBeenCalledWith("today");
+  });
+
+  it("is honest when no AI scores exist and offers a wider period when empty", async () => {
+    renderBest({ period: "today", period_start: null, candidates: 0, ai_scored: 0, items: [] });
+    expect(await screen.findByText(/No analysed frames in today/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show all time" }));
+    expect(api.best).toHaveBeenLastCalledWith("all");
   });
 });
 
@@ -213,8 +282,8 @@ describe("AnalysisPanel", () => {
         }}
       />,
     );
-    expect(screen.getByText("Estimated sharpness")).toBeInTheDocument();
-    expect(screen.getByText("71")).toBeInTheDocument();
+    // The headline sharpness lives in the verdict strip; the panel must not repeat it.
+    expect(screen.queryByText("Estimated sharpness")).not.toBeInTheDocument();
     expect(screen.getByText("Exposure looks balanced.")).toBeInTheDocument();
     expect(screen.getByText("Possible camera shake.")).toBeInTheDocument();
     expect(screen.getByText("1 face(s) detected")).toBeInTheDocument();

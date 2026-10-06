@@ -4,13 +4,40 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { api } from "./api";
-import type { PhotoDetail, PhotoUpdate } from "./types";
+import type { BestPeriod, PhotoDetail, PhotoUpdate } from "./types";
 
-export function usePhoto(id: string | null | undefined) {
+export function usePhoto(id: string | null | undefined, { keepPrevious = false } = {}) {
   return useQuery({
     queryKey: ["photo", id],
     queryFn: () => api.photo(id as string),
     enabled: Boolean(id),
+    placeholderData: keepPrevious ? (prev) => prev : undefined,
+  });
+}
+
+/** Warm the detail and preview of neighbouring photos so a swipe lands instantly. */
+export function usePrefetchPhotos(ids: (string | null | undefined)[]) {
+  const qc = useQueryClient();
+  const key = ids.filter(Boolean).join(",");
+  useEffect(() => {
+    if (!key) return;
+    for (const id of key.split(",")) {
+      void qc
+        .prefetchQuery({ queryKey: ["photo", id], queryFn: () => api.photo(id), staleTime: 30_000 })
+        .then(() => {
+          const url = qc.getQueryData<PhotoDetail>(["photo", id])?.preview_url;
+          if (url) new Image().src = url;
+        });
+    }
+  }, [key, qc]);
+}
+
+/** Lives under the "photos" key so live photo events refresh the ranking. */
+export function useBestPhotos(period: BestPeriod) {
+  return useQuery({
+    queryKey: ["photos", "best", period],
+    queryFn: () => api.best(period),
+    placeholderData: (prev) => prev,
   });
 }
 

@@ -17,7 +17,7 @@ function plural(n: number, word: string) {
 /** One line of shoot context, so the latest frame can own the screen. */
 export function CameraStatusBar({ stats }: { stats: Stats | undefined }) {
   const now = useNow(5_000);
-  if (!stats) return <Skeleton className="h-12 w-full rounded-xl" />;
+  if (!stats) return <Skeleton className="h-12 w-full rounded-xl max-md:hidden" />;
 
   const { camera, today, totals } = stats;
   const receiving = camera.state === "receiving";
@@ -28,6 +28,8 @@ export function CameraStatusBar({ stats }: { stats: Stats | undefined }) {
       className={cn(
         "flex flex-wrap items-center gap-x-5 gap-y-1.5 rounded-xl border px-4 py-2.5 text-sm",
         receiving ? "border-ok/30 bg-ok/[0.04]" : "border-ink-800 bg-ink-900/80",
+        // Phones carry camera state in the header; the card only earns space when work is stuck.
+        !backlog && "max-md:hidden",
       )}
       data-testid="camera-status"
     >
@@ -75,7 +77,7 @@ export function CameraStatusBar({ stats }: { stats: Stats | undefined }) {
 
       <Link
         href="/library"
-        className="text-ink-300 hover:text-accent tabular ml-auto flex items-center gap-1"
+        className="text-ink-300 hover:text-accent tabular -my-2 ml-auto flex items-center gap-1 py-2"
       >
         Library <span className="text-ink-100">{totals.photos.toLocaleString()}</span>
         <ArrowRight className="size-3.5" />

@@ -54,7 +54,7 @@ function HealthTile({ name, c }: { name: string; c: ComponentHealth }) {
       )}
       <div className="min-w-0">
         <div className="text-sm font-medium">{COMPONENT_LABEL[name] ?? titleCase(name)}</div>
-        <div className="text-ink-400 truncate text-[11px]" title={c.detail ?? ""}>
+        <div className="text-ink-400 truncate text-xs" title={c.detail ?? ""}>
           {c.detail ?? (c.ok ? "Healthy" : "Unavailable")}
         </div>
       </div>
@@ -63,7 +63,7 @@ function HealthTile({ name, c }: { name: string; c: ComponentHealth }) {
 }
 
 function DiskBar({ label, disk }: { label: string; disk: DiskUsage | null }) {
-  if (!disk) return <div className="text-ink-500 text-sm">{label}: unavailable</div>;
+  if (!disk) return <div className="text-ink-400 text-sm">{label}: unavailable</div>;
   const pct = (disk.used / disk.total) * 100;
   return (
     <div>
@@ -79,7 +79,7 @@ function DiskBar({ label, disk }: { label: string; disk: DiskUsage | null }) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <code className="text-ink-500 mt-1 block truncate font-mono text-[10px]">{disk.path}</code>
+      <code className="text-ink-400 mt-1 block truncate font-mono text-xs">{disk.path}</code>
     </div>
   );
 }
@@ -155,10 +155,10 @@ function JobsTable() {
         {jobs.isLoading ? (
           <Skeleton className="h-40 w-full" />
         ) : !jobs.data?.items.length ? (
-          <p className="text-ink-500 text-sm">No jobs.</p>
+          <p className="text-ink-400 text-sm">No jobs.</p>
         ) : (
           <table className="w-full text-left text-[12px]" data-testid="jobs-table">
-            <thead className="text-ink-500 text-[10px] tracking-wider uppercase">
+            <thead className="text-ink-400 text-xs tracking-wider uppercase">
               <tr>
                 <th className="py-1.5 pr-3 font-semibold">Kind</th>
                 <th className="py-1.5 pr-3 font-semibold">Status</th>
@@ -299,7 +299,7 @@ export default function SystemPage() {
               </dd>
             </dl>
             <table className="w-full text-[12px]">
-              <thead className="text-ink-500 text-[10px] tracking-wider uppercase">
+              <thead className="text-ink-400 text-xs tracking-wider uppercase">
                 <tr>
                   <th className="text-left font-semibold">Queue</th>
                   <th className="text-right font-semibold">Waiting</th>
@@ -319,7 +319,7 @@ export default function SystemPage() {
               </tbody>
             </table>
             {workers.length > 0 && (
-              <ul className="text-ink-400 space-y-0.5 text-[11px]">
+              <ul className="text-ink-400 space-y-0.5 text-xs">
                 {workers.map((w) => (
                   <li key={w.name} className="truncate font-mono">
                     {w.name} · {w.state} · {w.queues?.join(", ")}
@@ -355,10 +355,7 @@ export default function SystemPage() {
                     title={r.accessible ? "accessible" : r.required ? "unavailable" : "optional, not present"}
                   />
                   <span className="text-ink-300 w-16 font-mono">{r.name}</span>
-                  <code
-                    className="text-ink-500 min-w-0 flex-1 truncate font-mono text-[11px]"
-                    title={r.nas_path}
-                  >
+                  <code className="text-ink-400 min-w-0 flex-1 truncate font-mono text-xs" title={r.nas_path}>
                     {r.nas_path}
                   </code>
                   <Badge tone={r.writable ? "warn" : "ok"}>{r.writable ? "writable" : "read-only"}</Badge>
@@ -421,7 +418,7 @@ export default function SystemPage() {
         </Card>
       </div>
 
-      <p className="text-ink-500 flex items-center gap-2 text-[11px]">
+      <p className="text-ink-400 flex items-center gap-2 text-xs">
         <Database className="size-3" /> Originals are never modified; ratings, flags and tags live in
         PostgreSQL only.
         <Activity className="ml-2 size-3" /> Prometheus metrics at <code className="font-mono">/metrics</code>{" "}

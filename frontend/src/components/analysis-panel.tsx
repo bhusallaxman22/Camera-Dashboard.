@@ -11,7 +11,6 @@ export function sharpnessTone(score: number | null | undefined): "ok" | "warn" |
   return "bad";
 }
 
-const TONE_TEXT = { ok: "text-ok", warn: "text-warn", bad: "text-bad", neutral: "text-ink-400" } as const;
 const TONE_BG = { ok: "bg-ok", warn: "bg-warn", bad: "bg-bad", neutral: "bg-ink-600" } as const;
 
 function Meter({
@@ -47,33 +46,21 @@ function Meter({
 export function AnalysisPanel({ analysis }: { analysis: Analysis | null }) {
   if (!analysis) {
     return (
-      <p className="text-ink-500 text-sm">Not analyzed yet. Analysis runs automatically after import.</p>
+      <p className="text-ink-400 text-sm">Not analyzed yet. Analysis runs automatically after import.</p>
     );
   }
-  const tone = sharpnessTone(analysis.sharpness_score);
   const hi = analysis.highlight_clipping_percent ?? 0;
   const lo = analysis.shadow_clipping_percent ?? 0;
+  const summary = [
+    !analysis.exposure_assessment &&
+      analysis.exposure_label &&
+      `${titleCase(analysis.exposure_label)} exposure`,
+    analysis.dynamic_range_ev != null && `~${analysis.dynamic_range_ev.toFixed(1)} EV tonal range`,
+  ].filter(Boolean);
 
   return (
     <div className="space-y-4" data-testid="analysis-panel">
-      <div className="flex items-end justify-between">
-        <div>
-          <div className="text-ink-500 text-[10px] font-semibold tracking-[0.14em] uppercase">
-            Estimated sharpness
-          </div>
-          <div className={cn("tabular text-3xl font-semibold", TONE_TEXT[tone])}>
-            {analysis.sharpness_score?.toFixed(0) ?? "—"}
-            <span className="text-ink-400 ml-1 text-sm font-normal">/ 100</span>
-          </div>
-          <div className={cn("text-sm", TONE_TEXT[tone])}>{analysis.sharpness_label ?? ""}</div>
-        </div>
-        <div className="text-ink-400 text-right text-[12px]">
-          <div>{analysis.exposure_label ? titleCase(analysis.exposure_label) : ""}</div>
-          {analysis.dynamic_range_ev != null && (
-            <div className="tabular">~{analysis.dynamic_range_ev.toFixed(1)} EV tonal range</div>
-          )}
-        </div>
-      </div>
+      {summary.length > 0 && <p className="text-ink-300 tabular text-sm">{summary.join(" · ")}</p>}
 
       <Histogram histogram={analysis.histogram} />
 
@@ -122,9 +109,7 @@ export function AnalysisPanel({ analysis }: { analysis: Analysis | null }) {
 
       {analysis.dominant_colors.length > 0 && (
         <div>
-          <div className="text-ink-500 mb-1.5 text-[10px] font-semibold tracking-[0.14em] uppercase">
-            Dominant colors
-          </div>
+          <div className="text-ink-400 mb-1.5 text-xs font-medium">Dominant colors</div>
           <div className="ring-ink-800 flex h-6 overflow-hidden rounded-md ring-1">
             {analysis.dominant_colors.map((c) => (
               <div
@@ -139,14 +124,14 @@ export function AnalysisPanel({ analysis }: { analysis: Analysis | null }) {
 
       <div className="text-ink-300 flex flex-wrap gap-x-5 gap-y-1 text-[12px]">
         <span className="flex items-center gap-1.5">
-          <ScanFace className="text-ink-500 size-3.5" />
+          <ScanFace className="text-ink-400 size-3.5" />
           {analysis.face_count == null
             ? "Face detection unavailable"
             : `${analysis.face_count} face(s) detected`}
         </span>
         {analysis.eye_count != null && analysis.eye_count > 0 && (
           <span className="flex items-center gap-1.5">
-            <Eye className="text-ink-500 size-3.5" /> {analysis.eye_count} eye(s)
+            <Eye className="text-ink-400 size-3.5" /> {analysis.eye_count} eye(s)
             {analysis.faces.some((f) => f.eyes.some((e) => e.sharpness != null)) && (
               <>
                 {" "}
@@ -169,7 +154,7 @@ export function AnalysisPanel({ analysis }: { analysis: Analysis | null }) {
         </ul>
       )}
 
-      <p className="text-ink-500 text-[11px]">
+      <p className="text-ink-400 text-xs">
         Heuristic estimates from the {analysis.source ?? "preview"} · v{analysis.algorithm_version} ·{" "}
         {formatDateTime(analysis.analyzed_at)}
         {analysis.duration_ms != null && ` · ${analysis.duration_ms} ms`}

@@ -16,7 +16,7 @@ function Section({ title, rows }: { title: string; rows: Row[] }) {
   if (!visible.length) return null;
   return (
     <div>
-      <h4 className="text-ink-500 mb-1.5 text-[10px] font-semibold tracking-[0.14em] uppercase">{title}</h4>
+      <h4 className="text-ink-200 mb-1.5 text-sm font-semibold">{title}</h4>
       <dl className="grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-4 gap-y-1 text-[13px]">
         {visible.map(([label, value]) => (
           <div key={label} className="contents">
@@ -49,7 +49,7 @@ export function ExposureStrip({ photo, className }: { photo: PhotoDetail; classN
     >
       {cells.map(([label, value]) => (
         <div key={label} className="px-2 py-2 text-center">
-          <div className="text-ink-500 text-[9px] font-semibold tracking-widest uppercase">{label}</div>
+          <div className="text-ink-300 text-xs">{label}</div>
           <div className="text-ink-100 tabular mt-0.5 font-mono text-[15px]">{value}</div>
         </div>
       ))}

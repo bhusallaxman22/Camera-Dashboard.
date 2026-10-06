@@ -1,5 +1,7 @@
 import type {
   Album,
+  BestPeriod,
+  BestPhotos,
   Facets,
   JobPage,
   PhotoDetail,
@@ -63,6 +65,8 @@ export const api = {
   photos: (query: PhotoQuery) => request<PhotoPage>(`/photos?${toSearchParams(query)}`),
   photo: (id: string) => request<PhotoDetail>(`/photos/${id}`),
   facets: () => request<Facets>("/photos/facets"),
+  best: (period: BestPeriod, limit = 12) =>
+    request<BestPhotos>(`/photos/best?${toSearchParams({ period, limit })}`),
   updatePhoto: (id: string, body: PhotoUpdate) =>
     request<PhotoDetail>(`/photos/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   bulkUpdate: (ids: string[], body: PhotoUpdate) =>

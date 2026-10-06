@@ -19,16 +19,14 @@ function PathRow({ label, value }: { label: string; value: string }) {
   const copy = useCopy();
   return (
     <div className="group flex items-center gap-2">
-      <span className="text-ink-500 w-10 shrink-0 text-[10px] font-semibold tracking-wide uppercase">
-        {label}
-      </span>
-      <code className="text-ink-300 min-w-0 flex-1 truncate font-mono text-[11px]" title={value}>
+      <span className="text-ink-300 w-10 shrink-0 text-xs font-semibold">{label}</span>
+      <code className="text-ink-300 min-w-0 flex-1 truncate font-mono text-xs" title={value}>
         {value}
       </code>
       <button
         type="button"
         onClick={() => copy(value, `${label} path`)}
-        className="text-ink-500 hover:bg-ink-800 hover:text-ink-100 rounded p-1"
+        className="text-ink-400 hover:bg-ink-800 hover:text-ink-100 rounded p-1"
         aria-label={`Copy ${label} path`}
       >
         <Copy className="size-3.5" />
@@ -38,7 +36,7 @@ function PathRow({ label, value }: { label: string; value: string }) {
 }
 
 export function FilesPanel({ files }: { files: PhotoFile[] }) {
-  if (!files.length) return <p className="text-ink-500 text-sm">No files.</p>;
+  if (!files.length) return <p className="text-ink-400 text-sm">No files.</p>;
   const ordered = [...files].sort((a, b) => Number(a.is_duplicate) - Number(b.is_duplicate));
   return (
     <ul className="space-y-3" data-testid="files-panel">
@@ -66,7 +64,7 @@ export function FilesPanel({ files }: { files: PhotoFile[] }) {
               {f.smb_path && <PathRow label="SMB" value={f.smb_path} />}
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="text-ink-500 text-[11px]">
+              <span className="text-ink-400 text-xs">
                 {f.width && f.height ? `${f.width}×${f.height} · ` : ""}modified{" "}
                 {formatDateTime(f.modification_time)}
               </span>

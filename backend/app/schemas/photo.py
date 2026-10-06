@@ -55,6 +55,21 @@ class PhotoPage(BaseModel):
     has_more: bool
 
 
+class BestPhoto(BaseModel):
+    photo: PhotoSummary
+    score: float
+    aesthetic_score: float | None
+    eye_sharpness: float | None
+
+
+class BestPhotos(BaseModel):
+    period: str
+    period_start: datetime | None
+    candidates: int
+    ai_scored: int
+    items: list[BestPhoto]
+
+
 class PhotoFileOut(ORM):
     id: uuid.UUID
     file_type: str

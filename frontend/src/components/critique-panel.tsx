@@ -8,7 +8,7 @@ function List({ title, icon, items }: { title: string; icon: ReactNode; items: s
   if (!items.length) return null;
   return (
     <div>
-      <div className="text-ink-500 mb-1 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.14em] uppercase">
+      <div className="text-ink-200 mb-1 flex items-center gap-1.5 text-sm font-semibold">
         {icon}
         {title}
       </div>
@@ -26,7 +26,7 @@ function List({ title, icon, items }: { title: string; icon: ReactNode; items: s
 
 export function CritiquePanel({ critique, history }: { critique: Critique | null; history?: number }) {
   if (!critique) {
-    return <p className="text-ink-500 text-sm">No AI feedback yet.</p>;
+    return <p className="text-ink-400 text-sm">No AI feedback yet.</p>;
   }
   if (critique.status !== "succeeded") {
     return (
@@ -59,13 +59,13 @@ export function CritiquePanel({ critique, history }: { critique: Critique | null
       {critique.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {critique.tags.map((t) => (
-            <span key={t} className="bg-ink-800 text-ink-300 rounded px-1.5 py-0.5 text-[11px]">
+            <span key={t} className="bg-ink-800 text-ink-300 rounded px-1.5 py-0.5 text-xs">
               #{t}
             </span>
           ))}
         </div>
       )}
-      <p className="text-ink-500 text-[11px]">
+      <p className="text-ink-400 text-xs">
         {formatDateTime(critique.created_at)}
         {critique.duration_ms != null && ` · ${critique.duration_ms} ms`}
         {history && history > 1 ? ` · ${history} critiques on record` : ""}
