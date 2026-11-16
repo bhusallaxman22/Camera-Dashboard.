@@ -291,6 +291,7 @@ All settings are environment variables; `.env.example` documents every one. The 
 | `OLLAMA_URL` / `OLLAMA_MODEL` | empty / `gemma4:26b` | Ollama server and vision model. |
 | `OLLAMA_THINK` / `OLLAMA_KEEP_ALIVE` | `false` / `30m` | Reasoning off keeps critiques at ~25 s; how long the model stays in VRAM. |
 | `AI_TIMEOUT_SECONDS` | `300` | Per-critique limit, including a cold model load. |
+| `AI_AUTO_APPLY` | `true` | After a successful critique, fill empty rating / `needs_edit` and sync AI tags (DB only; never overwrites your stars). |
 | `IMMICH_ENABLED` | `false` | Read-only Immich lookups/links. |
 | `API_TOKEN` | empty | Optional bearer token for `/api/v1`; the frontend proxy injects it automatically. |
 | `LOG_FORMAT` / `LOG_LEVEL` | `json` / `INFO` | `console` is easier to read by eye. |
@@ -468,7 +469,11 @@ imported and rendered first. A failed or unreachable Ollama is recorded on the p
 Activity; it never blocks ingest.
 
 `AI_AUTO_ANALYZE=false` stops automatic critiques; you can still run them per photo
-(*Re-analyze* on the photo page) or in bulk with `make reanalyze ARGS=--ai`. Adding a provider means one class in
+(*Re-analyze* on the photo page) or in bulk with `make reanalyze ARGS=--ai`. With
+`AI_AUTO_APPLY=true` (default), a successful critique also fills empty culling fields:
+`aesthetic_score` → stars (only if rating is still 0), non-empty `issues` → `needs_edit`,
+and critique tags/`scene` as `source=ai` photo tags (user tags are never removed). Originals
+and Immich are untouched. Adding a provider means one class in
 `backend/app/ai/` plus a line in `registry.py`.
 
 ## Immich integration

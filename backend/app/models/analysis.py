@@ -84,6 +84,8 @@ class AICritique(Base):
     tags: Mapped[list[str]] = mapped_column(JSONType, default=list)
     aesthetic_score: Mapped[float | None] = mapped_column(Float)
     confidence: Mapped[float | None] = mapped_column(Float)
+    # What culling fields this run filled (rating / needs_edit / tags_*), if any.
+    applied: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
     error: Mapped[str | None] = mapped_column(Text)
     duration_ms: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, nullable=False)

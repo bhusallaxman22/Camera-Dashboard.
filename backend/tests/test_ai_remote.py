@@ -173,7 +173,12 @@ def test_pipeline_stores_ollama_critique(ollama_env, db, monkeypatch):
     critique = db.scalars(select(AICritique)).one()
     assert (critique.provider, critique.status, critique.model_name) == ("ollama", "succeeded", "gemma4:26b")
     assert critique.suggestions == ["raise shutter speed to 1/125"]
-    assert db.scalars(select(Photo)).one().scene == "portrait"
+    photo = db.scalars(select(Photo)).one()
+    assert photo.scene == "portrait"
+    assert photo.rating == 3  # aesthetic 6.5 → 3 stars
+    assert photo.needs_edit is True
+    assert critique.applied and critique.applied.get("rating") == 3
+    assert "indoor" in {pt.tag.name for pt in photo.tags if pt.source == "ai"}
     assert len(fake.calls) == 1
 
 

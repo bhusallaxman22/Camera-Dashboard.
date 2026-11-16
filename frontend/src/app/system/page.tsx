@@ -375,6 +375,7 @@ export default function SystemPage() {
                   {s.config.ai_provider}
                   {aiModel && <span className="text-ink-400"> · {aiModel}</span>}
                   {s.config.ai_auto_analyze ? " · auto" : " · manual"}
+                  {s.config.ai_auto_apply ? " · apply culling" : ""}
                 </dd>
                 <dt className="text-ink-400">Providers</dt>
                 <dd className="flex flex-wrap justify-end gap-1">

@@ -124,6 +124,13 @@ export interface Analysis {
   analyzed_at: string;
 }
 
+export interface CritiqueApplied {
+  rating?: number;
+  needs_edit?: boolean;
+  tags_added?: string[];
+  tags_removed?: string[];
+}
+
 export interface Critique {
   id: string;
   provider: string;
@@ -139,6 +146,7 @@ export interface Critique {
   tags: string[];
   aesthetic_score: number | null;
   confidence: number | null;
+  applied?: CritiqueApplied | null;
   error: string | null;
   duration_ms: number | null;
   created_at: string;
@@ -296,6 +304,7 @@ export interface SystemOverview {
   config: {
     ai_provider: string;
     ai_auto_analyze: boolean;
+    ai_auto_apply: boolean;
     ai_providers: { name: string; configured: boolean; active: boolean; model?: string | null }[];
     watch_mode: string;
     file_stable_seconds: number;

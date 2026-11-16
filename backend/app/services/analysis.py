@@ -117,6 +117,7 @@ def run_ai_critique(session: Session, photo: Photo, provider_name: str | None = 
         return None
     started = time.perf_counter()
     critique = AICritique(photo_id=photo.id, provider=provider.name)
+    applied: dict = {}
     try:
         with metrics.AI_SECONDS.time():
             result = provider.analyze_photo(build_context(photo), preview_path(photo))
@@ -138,6 +139,11 @@ def run_ai_critique(session: Session, photo: Photo, provider_name: str | None = 
         critique.status = "succeeded"
         if result.scene:
             photo.scene = result.scene[:64]
+        if get_settings().ai_auto_apply:
+            from app.services.ai_apply import apply_critique_to_photo
+
+            applied = apply_critique_to_photo(session, photo, result)
+            critique.applied = applied or None
         metrics.inc("ai_runs", provider=provider.name, status="succeeded")
     except AIProviderError as exc:
         critique.status, critique.error = "failed", str(exc)
@@ -155,5 +161,9 @@ def run_ai_critique(session: Session, photo: Photo, provider_name: str | None = 
     session.add(critique)
     session.flush()
     refresh_search_text(session, photo)
-    publish_after_commit(session, "photo.analyzed", {"photo_id": photo.id, "ai": True})
+    publish_after_commit(
+        session,
+        "photo.analyzed",
+        {"photo_id": photo.id, "ai": True, "applied": applied or None},
+    )
     return critique

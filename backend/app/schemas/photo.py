@@ -136,6 +136,7 @@ class CritiqueOut(ORM):
     error: str | None
     duration_ms: int | None
     created_at: datetime
+    applied: dict[str, Any] | None = None
 
 
 class TagOut(ORM):

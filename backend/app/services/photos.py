@@ -349,19 +349,55 @@ def to_detail(session: Session, photo: Photo) -> PhotoDetail:
     )
 
 
+def _normalize_tag_names(names: list[str]) -> set[str]:
+    return {n.strip().lower()[:64] for n in names if n and n.strip()}
+
+
+def _get_or_create_tag(session: Session, name: str) -> Tag:
+    tag = session.scalars(select(Tag).where(Tag.name == name)).first()
+    if tag is None:
+        tag = Tag(name=name)
+        session.add(tag)
+        session.flush()
+    return tag
+
+
 def set_tags(session: Session, photo: Photo, names: list[str]) -> None:
-    wanted = {n.strip().lower()[:64] for n in names if n and n.strip()}
+    """Replace the photo's tags with the given names (user-owned).
+
+    The list is the complete desired set from the UI. AI tags removed here are
+    re-added on the next successful critique via merge_ai_tags.
+    """
+    wanted = _normalize_tag_names(names)
     current = {pt.tag.name: pt for pt in photo.tags}
     for name, pt in current.items():
         if name not in wanted:
             photo.tags.remove(pt)
     for name in wanted - set(current):
-        tag = session.scalars(select(Tag).where(Tag.name == name)).first()
-        if tag is None:
-            tag = Tag(name=name)
-            session.add(tag)
-            session.flush()
-        photo.tags.append(PhotoTag(photo_id=photo.id, tag_id=tag.id, tag=tag))
+        tag = _get_or_create_tag(session, name)
+        photo.tags.append(PhotoTag(photo_id=photo.id, tag_id=tag.id, tag=tag, source="user"))
+    for name in wanted & set(current):
+        current[name].source = "user"
+
+
+def merge_ai_tags(session: Session, photo: Photo, names: list[str]) -> dict[str, list[str]]:
+    """Sync AI-sourced tags. Never removes or rewrites user tags."""
+    wanted = _normalize_tag_names(names)
+    current = {pt.tag.name: pt for pt in list(photo.tags)}
+    removed: list[str] = []
+    added: list[str] = []
+    for name, pt in current.items():
+        if pt.source == "ai" and name not in wanted:
+            photo.tags.remove(pt)
+            removed.append(name)
+    for name in wanted:
+        existing = current.get(name)
+        if existing is not None:
+            continue  # leave user (or already-ai) tags alone
+        tag = _get_or_create_tag(session, name)
+        photo.tags.append(PhotoTag(photo_id=photo.id, tag_id=tag.id, tag=tag, source="ai"))
+        added.append(name)
+    return {"added": sorted(added), "removed": sorted(removed)}
 
 
 def album_summary(session: Session, album: Album) -> dict[str, Any]:

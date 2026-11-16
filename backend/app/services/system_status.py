@@ -132,6 +132,7 @@ def system_overview(session: Session) -> dict[str, Any]:
         "config": {
             "ai_provider": s.ai_provider,
             "ai_auto_analyze": s.ai_auto_analyze,
+            "ai_auto_apply": s.ai_auto_apply,
             "ai_providers": describe_providers(),
             "watch_mode": s.watch_mode,
             "file_stable_seconds": s.file_stable_seconds,

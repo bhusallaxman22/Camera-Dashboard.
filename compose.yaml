@@ -34,6 +34,7 @@ x-backend-env: &backend-env
   THUMBNAIL_QUALITY: ${THUMBNAIL_QUALITY:-80}
   AI_PROVIDER: ${AI_PROVIDER:-local}
   AI_AUTO_ANALYZE: ${AI_AUTO_ANALYZE:-true}
+  AI_AUTO_APPLY: ${AI_AUTO_APPLY:-true}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
   OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}

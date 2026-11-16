@@ -318,6 +318,7 @@ describe("CritiquePanel and MetadataGrid", () => {
           tags: ["portrait"],
           aesthetic_score: null,
           confidence: 0.35,
+          applied: { rating: 3, needs_edit: true, tags_added: ["portrait", "indoor"] },
           error: null,
           duration_ms: 3,
           created_at: "2026-09-30T15:05:00Z",
@@ -326,6 +327,7 @@ describe("CritiquePanel and MetadataGrid", () => {
     );
     expect(screen.getByText("Portrait")).toBeInTheDocument();
     expect(screen.getByText("Try +1/3 EV.")).toBeInTheDocument();
+    expect(screen.getByText(/Applied: ★3 · needs edit · \+2 AI tags/)).toBeInTheDocument();
     expect(screen.getByText(/3 critiques on record/)).toBeInTheDocument();
   });
 

@@ -54,6 +54,8 @@ class Settings(BaseSettings):
 
     ai_provider: Literal["local", "openai", "ollama", "none"] = "local"
     ai_auto_analyze: bool = True
+    # After a successful critique, fill empty rating / needs_edit and sync AI tags.
+    ai_auto_apply: bool = True
     openai_api_key: str = ""
     openai_model: str = "gpt-4.1-mini"
     openai_base_url: str = "https://api.openai.com/v1"

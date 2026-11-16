@@ -29,6 +29,7 @@ services:
       # loaded). AI_PROVIDER=local gives the offline heuristic critique instead.
       AI_PROVIDER: ${AI_PROVIDER:-ollama}
       AI_AUTO_ANALYZE: ${AI_AUTO_ANALYZE:-true}
+      AI_AUTO_APPLY: ${AI_AUTO_APPLY:-true}
       OLLAMA_URL: ${OLLAMA_URL:-http://192.168.0.142:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma4:26b}
       OLLAMA_THINK: ${OLLAMA_THINK:-false}
